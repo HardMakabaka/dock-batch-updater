@@ -1,51 +1,51 @@
-# DOCX Batch Updater
+# DOCX 批量更新器
 
-A Windows desktop application for batch updating DOCX documents with strict format preservation.
+一款用于批量更新 DOCX 文档并严格保持格式的 Windows 桌面应用程序。
 
-## Features
+## 功能特性
 
-- **Batch Processing**: Process up to 100+ DOCX documents simultaneously
-- **Format Preservation**: Maintains all formatting attributes including:
-  - Font styles (name, size, bold, italic, underline)
-  - Text colors and highlights
-  - Paragraph alignment and indentation
-  - Line spacing
-  - Table structures and cell formatting
-- **Table Support**: Edit content within tables while preserving structure
-- **Auto Backup**: Optional automatic backup of original documents
-- **Progress Tracking**: Real-time progress display and detailed logs
-- **User-Friendly GUI**: Intuitive interface built with PyQt5
-- **Standalone Executable**: Packaged as a single .exe file (no Python required)
+- **批量处理**：可同时处理 100+ 份 DOCX 文档
+- **格式保持**：保留所有格式属性，包括：
+  - 字体样式（名称、大小、加粗、斜体、下划线）
+  - 文本颜色和背景色
+  - 段落对齐和缩进
+  - 行间距
+  - 表格结构和单元格格式
+- **表格支持**：编辑表格内容同时保持表格结构
+- **自动备份**：可选的原始文档自动备份
+- **进度跟踪**：实时进度显示和详细日志
+- **用户友好界面**：基于 PyQt5 构建的直观界面
+- **独立可执行程序**：打包为单个 .exe 文件（无需安装 Python）
 
-## Compatibility
+## 兼容性
 
 - **Windows 7**
 - **Windows 10**
 - **Windows 11**
 
-## Installation
+## 安装方式
 
-### Option 1: Using the Executable (Recommended)
+### 方式一：使用可执行程序（推荐）
 
-1. Download `DOCX Batch Updater.exe` from the `dist` folder
-2. Run the executable directly
-3. No additional installation required
+1. 从 `dist` 文件夹下载 `DOCX Batch Updater.exe`
+2. 直接运行可执行程序
+3. 无需额外安装
 
-### Option 2: Running from Source
+### 方式二：从源代码运行
 
-#### Prerequisites
+#### 前置条件
 
-- Python 3.8-3.12 (recommended; PyInstaller 5.13.0 may not work on Python 3.13)
-- Windows operating system
+- Python 3.8-3.12（推荐；PyInstaller 5.13.0 在 Python 3.13 上可能无法使用）
+- Windows 操作系统
 
-#### Steps
+#### 步骤
 
-1. Clone or download the source code
-2. Install dependencies:
+1. 克隆或下载源代码
+2. 安装依赖：
    ```bash
    pip install -r requirements.txt
    ```
-3. Run the application:
+3. 运行应用程序：
    ```bash
    cd src
    python main.py
@@ -91,157 +91,157 @@ pip install -r requirements.txt
 - 打包过程中出现的 "Hidden import 'sip' not found!" 警告可忽略，不影响运行
 - 打包时间约 30-60 秒，取决于计算机性能
 
-## Usage Guide
+## 使用指南
 
-### Step 1: Add Files
+### 步骤 1：添加文件
 
-1. Click **Add Files** to select individual DOCX files
-2. Or click **Add Folder** to select a folder containing DOCX files
-3. The file list will display all selected documents
+1. 点击 **添加文件** 选择单个 DOCX 文件
+2. 或点击 **添加文件夹** 选择包含 DOCX 文件的文件夹
+3. 文件列表将显示所有选中的文档
 
-### Step 2: Define Replacement Rules
+### 步骤 2：定义替换规则
 
-1. Enter text to find in the **Find** field
-2. Enter replacement text in the **Replace** field
-3. Click **Add Rule** to add the replacement rule
-4. Repeat for additional rules
+1. 在 **查找** 字段中输入要查找的文本
+2. 在 **替换** 字段中输入替换文本
+3. 点击 **添加规则** 添加替换规则
+4. 为额外的规则重复此步骤
 
-**Example:**
-- Find: `2024`
-- Replace: `2025`
-- Result: All occurrences of "2024" will be replaced with "2025"
+**示例：**
+- 查找：`2024`
+- 替换：`2025`
+- 结果：所有 "2024" 的出现都将被替换为 "2025"
 
-### Step 3: Configure Backup Options
+### 步骤 3：配置备份选项
 
-1. Check **Create Backup Files** to automatically create backups
-2. Optional: Click **Select Backup Directory** to specify a backup location
-3. If no backup directory is specified, backups will be created in the same folder as the original files
+1. 勾选 **创建备份文件** 自动创建备份
+2. 可选：点击 **选择备份目录** 指定备份位置
+3. 如果未指定备份目录，备份将在与原文件相同的文件夹中创建
 
-### Step 4: Process Documents
+### 步骤 4：处理文档
 
-1. Review your files and replacement rules
-2. Click **Start Processing**
-3. Monitor progress in the progress bar and log
-4. Wait for processing to complete
+1. 查看您的文件和替换规则
+2. 点击 **开始处理**
+3. 在进度条和日志中监控进度
+4. 等待处理完成
 
-### Step 5: Review Results
+### 步骤 5：查看结果
 
-After processing:
-- The log will show results for each file
-- Statistics will display total, successful, and failed counts
-- Backups (if enabled) will be created with `_backup` suffix
+处理完成后：
+- 日志将显示每个文件的结果
+- 统计信息将显示总数、成功数和失败数
+- 备份（如果已启用）将以 `_backup` 后缀创建
 
-## Project Structure
+## 项目结构
 
 ```
 docx-batch-updater/
 ├── src/
-│   ├── main.py              # Program entry point
+│   ├── main.py              # 程序入口
 │   ├── gui/
 │   │   ├── __init__.py
-│   │   ├── main_window.py   # Main GUI window
-│   │   └── widgets.py       # Custom UI components
+│   │   ├── main_window.py   # 主 GUI 窗口
+│   │   └── widgets.py       # 自定义 UI 组件
 │   ├── core/
 │   │   ├── __init__.py
-│   │   ├── docx_processor.py  # Document processing
-│   │   └── batch_processor.py  # Batch processing logic
+│   │   ├── docx_processor.py  # 文档处理
+│   │   └── batch_processor.py  # 批量处理逻辑
 │   └── utils/
 │       ├── __init__.py
-│       └── format_preserver.py  # Format preservation utilities
-├── tests/                   # Test cases
-├── requirements.txt         # Python dependencies
-├── build.bat               # Build script
-├── README.md               # This file
+│       └── format_preserver.py  # 格式保持工具
+├── tests/                   # 测试用例
+├── requirements.txt         # Python 依赖
+├── build.bat               # 构建脚本
+├── README.md               # 本文件
 ```
 
-## Technical Details
+## 技术细节
 
-### Format Preservation Algorithm
+### 格式保持算法
 
-The application uses python-docx's run-level operations to preserve formatting:
+应用程序使用 python-docx 的 run 级别操作来保持格式：
 
-1. **Text Detection**: Locates text within paragraph runs
-2. **Format Capture**: Captures all formatting attributes before replacement
-3. **Text Replacement**: Replaces text while preserving run structure
-4. **Format Application**: Reapplies captured formatting to the new text
+1. **文本检测**：在段落 runs 中定位文本
+2. **格式捕获**：在替换前捕获所有格式属性
+3. **文本替换**：保留 run 结构的同时替换文本
+4. **格式应用**：将捕获的格式重新应用到新文本
 
-### Batch Processing
+### 批量处理
 
-- Uses thread pool executor for parallel processing
-- Configurable worker threads (default: 4)
-- Real-time progress updates
-- Comprehensive error handling
+- 使用线程池执行器进行并行处理
+- 可配置的工作线程（默认：4）
+- 实时进度更新
+- 全面的错误处理
 
-### Dependencies
+### 依赖项
 
-- `python-docx==0.8.11`: DOCX document manipulation
-- `PyQt5==5.15.9`: GUI framework
-- `PyInstaller==5.13.0`: Executable packaging
+- `python-docx==0.8.11`：DOCX 文档处理
+- `PyQt5==5.15.9`：GUI 框架
+- `PyInstaller==5.13.0`：可执行程序打包
 
-## Troubleshooting
+## 故障排除
 
-### Processing Errors
+### 处理错误
 
-If processing fails for some documents:
+如果某些文档处理失败：
 
-1. Check the log for specific error messages
-2. Ensure files are valid DOCX documents
-3. Verify files are not corrupted or password-protected
-4. Check that files are not open in another application
+1. 查看日志中的具体错误信息
+2. 确保文件是有效的 DOCX 文档
+3. 验证文件未损坏或受密码保护
+4. 检查文件未在另一个应用程序中打开
 
-### Performance Issues
+### 性能问题
 
-- Large files (>10MB) may take longer to process
-- Reduce the number of simultaneous files if experiencing slowdowns
-- Close other applications to free system resources
+- 大文件（>10MB）可能需要更长的处理时间
+- 如果遇到卡顿，减少同时处理的文件数量
+- 关闭其他应用程序以释放系统资源
 
-### Build Issues
+### 构建问题
 
-- Ensure Python 3.8+ is installed
-- Verify all dependencies are installed correctly
-- Run as administrator if permission issues occur
+- 确保已安装 Python 3.8+
+- 验证所有依赖已正确安装
+- 如果出现权限问题，以管理员身份运行
 
-## Best Practices
+## 最佳实践
 
-1. **Always create backups** when processing important documents
-2. **Test with a single file** before batch processing
-3. **Verify results** after processing, especially with complex formatting
-4. **Keep replacement rules simple** - complex regex patterns may cause issues
-5. **Process in batches** if dealing with more than 100 documents
+1. **始终创建备份** 处理重要文档时
+2. **先用单个文件测试** 批量处理前
+3. **处理后验证结果**，特别是复杂格式
+4. **保持替换规则简单** - 复杂的正则表达式可能导致问题
+5. **分批处理** 如果处理超过 100 个文档
 
-## Limitations
+## 限制
 
-- Only supports `.docx` format (not `.doc`)
-- Macros and VBA code are not preserved
-- Some advanced Word features (e.g., smart art, embedded objects) may not be fully supported
+- 仅支持 `.docx` 格式（不支持 `.doc`）
+- 宏和 VBA 代码不会被保留
+- 某些高级 Word 功能（如智能图形、嵌入对象）可能无法完全支持
 
-## Contributing
+## 贡献
 
-Contributions are welcome! Please ensure:
+欢迎贡献！请确保：
 
-1. Code follows PEP 8 style guidelines
-2. All functions have proper docstrings
-3. Tests are included for new features
-4. Changes are documented in the commit message
+1. 代码遵循 PEP 8 样式指南
+2. 所有函数都有适当的文档字符串
+3. 新功能包含测试
+4. 变更在提交消息中记录
 
-## License
+## 许可证
 
-This project is provided as-is for educational and commercial use.
+本项目按原样提供，用于教育和商业用途。
 
-## Support
+## 支持
 
-For issues or questions:
-1. Check the troubleshooting section above
-2. Review the log output for specific error details
-3. Ensure your documents meet the requirements
+如有问题或疑问：
+1. 查看上面的故障排除部分
+2. 查看日志输出以获取具体错误详情
+3. 确保您的文档符合要求
 
-## Changelog
+## 更新日志
 
-### Version 1.0.0
-- Initial release
-- Batch file processing
-- Format preservation
-- Table support
-- Backup functionality
-- Progress tracking
-- Standalone executable packaging
+### 版本 1.0.0
+- 初始版本
+- 批量文件处理
+- 格式保持
+- 表格支持
+- 备份功能
+- 进度跟踪
+- 独立可执行程序打包
