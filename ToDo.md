@@ -23,3 +23,11 @@
 - [新增] 清理冗余文件（build_simple.bat, build_venv.bat, run_build.ps1, .coverage, *.spec）
 - [新增] 更新 build.bat 为简洁版本
 - [新增] 更新 README.md 添加完整打包流程说明
+- [新增] 创建 DESIGN.md 文档，记录完整的设计与开发思路（中文）
+
+### CI 自动化配置阶段（2026-02-10）
+- [新增] 创建 GitHub Actions 工作流配置（.github/workflows/build.yml）
+- [新增] 配置自动化打包流程（检出代码 → 安装依赖 → 运行测试 → 打包 → 上传 artifact）
+- [新增] 添加依赖缓存优化构建速度
+- [新增] 配置手动触发构建功能
+- [新增] 创建 CI.md 文档，记录 CI 配置说明与使用方法
