@@ -40,33 +40,33 @@ class FileListWidget(QWidget):
         # Button row
         button_layout = QHBoxLayout()
 
-        self.add_files_btn = QPushButton("Add Files")
+        self.add_files_btn = QPushButton("添加文件")
         self.add_files_btn.clicked.connect(self.add_files)
         button_layout.addWidget(self.add_files_btn)
 
-        self.add_folder_btn = QPushButton("Add Folder")
+        self.add_folder_btn = QPushButton("添加文件夹")
         self.add_folder_btn.clicked.connect(self.add_folder)
         button_layout.addWidget(self.add_folder_btn)
 
-        self.remove_file_btn = QPushButton("Remove Selected")
+        self.remove_file_btn = QPushButton("移除所选")
         self.remove_file_btn.clicked.connect(self.remove_selected)
         button_layout.addWidget(self.remove_file_btn)
 
-        self.clear_all_btn = QPushButton("Clear All")
+        self.clear_all_btn = QPushButton("清空")
         self.clear_all_btn.clicked.connect(self.clear_all)
         button_layout.addWidget(self.clear_all_btn)
 
         layout.addLayout(button_layout)
 
         # File count label
-        self.file_count_label = QLabel("0 files selected")
+        self.file_count_label = QLabel("已选择 0 个文件")
         layout.addWidget(self.file_count_label)
 
     def add_files(self) -> None:
         """Add files to the list via file dialog."""
         files, _ = QFileDialog.getOpenFileNames(
             self,
-            "Select DOCX Files",
+            "选择 DOCX 文件",
             "",
             "Word Documents (*.docx);;All Files (*.*)"
         )
@@ -86,7 +86,7 @@ class FileListWidget(QWidget):
         """Add all DOCX files from a folder."""
         folder = QFileDialog.getExistingDirectory(
             self,
-            "Select Folder"
+            "选择文件夹"
         )
 
         if folder:
@@ -133,7 +133,7 @@ class FileListWidget(QWidget):
     def _update_count(self) -> None:
         """Update the file count label."""
         count = len(self.files)
-        self.file_count_label.setText(f"{count} file{'s' if count != 1 else ''} selected")
+        self.file_count_label.setText(f"已选择 {count} 个文件")
         self.filesChanged.emit(count)
 
 
@@ -155,7 +155,7 @@ class ReplacementRulesWidget(QWidget):
         layout = QVBoxLayout(self)
 
         # Group box for rules
-        rules_group = QGroupBox("Replacement Rules")
+        rules_group = QGroupBox("替换规则")
         rules_layout = QVBoxLayout()
 
         # Rule list
@@ -166,14 +166,14 @@ class ReplacementRulesWidget(QWidget):
         # Add rule form
         form_layout = QHBoxLayout()
 
-        form_layout.addWidget(QLabel("Find:"))
+        form_layout.addWidget(QLabel("查找："))
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Text to find...")
+        self.search_input.setPlaceholderText("要查找的文本…")
         form_layout.addWidget(self.search_input)
 
-        form_layout.addWidget(QLabel("Replace:"))
+        form_layout.addWidget(QLabel("替换为："))
         self.replace_input = QLineEdit()
-        self.replace_input.setPlaceholderText("Replacement text...")
+        self.replace_input.setPlaceholderText("替换后的文本…")
         form_layout.addWidget(self.replace_input)
 
         rules_layout.addLayout(form_layout)
@@ -181,15 +181,15 @@ class ReplacementRulesWidget(QWidget):
         # Buttons
         button_layout = QHBoxLayout()
 
-        self.add_rule_btn = QPushButton("Add Rule")
+        self.add_rule_btn = QPushButton("添加规则")
         self.add_rule_btn.clicked.connect(self.add_rule)
         button_layout.addWidget(self.add_rule_btn)
 
-        self.remove_rule_btn = QPushButton("Remove Selected")
+        self.remove_rule_btn = QPushButton("移除所选")
         self.remove_rule_btn.clicked.connect(self.remove_selected)
         button_layout.addWidget(self.remove_rule_btn)
 
-        self.clear_rules_btn = QPushButton("Clear All Rules")
+        self.clear_rules_btn = QPushButton("清空规则")
         self.clear_rules_btn.clicked.connect(self.clear_all)
         button_layout.addWidget(self.clear_rules_btn)
 
@@ -199,7 +199,7 @@ class ReplacementRulesWidget(QWidget):
         layout.addWidget(rules_group)
 
         # Rule count label
-        self.rule_count_label = QLabel("0 rules defined")
+        self.rule_count_label = QLabel("已定义 0 条规则")
         layout.addWidget(self.rule_count_label)
 
     def add_rule(self) -> None:
@@ -208,7 +208,7 @@ class ReplacementRulesWidget(QWidget):
         replace_text = self.replace_input.text()
 
         if not search_text:
-            QMessageBox.warning(self, "Warning", "Please enter text to find.")
+            QMessageBox.warning(self, "提示", "请输入要查找的文本。")
             return
 
         self.rules.append((search_text, replace_text))
@@ -252,7 +252,7 @@ class ReplacementRulesWidget(QWidget):
     def _update_count(self) -> None:
         """Update the rule count label."""
         count = len(self.rules)
-        self.rule_count_label.setText(f"{count} rule{'s' if count != 1 else ''} defined")
+        self.rule_count_label.setText(f"已定义 {count} 条规则")
         self.rulesChanged.emit(count)
 
 
@@ -277,7 +277,7 @@ class ProgressWidget(QWidget):
         layout.addWidget(self.progress_bar)
 
         # Progress label
-        self.progress_label = QLabel("Ready")
+        self.progress_label = QLabel("就绪")
         layout.addWidget(self.progress_label)
 
         # Statistics label
@@ -294,7 +294,7 @@ class ProgressWidget(QWidget):
         if total > 0:
             percentage = int((current / total) * 100)
             self.progress_bar.setValue(percentage)
-            self.progress_label.setText(f"Processing: {current}/{total} files")
+            self.progress_label.setText(f"处理中：{current}/{total} 个文件")
 
     def set_status(self, status: str) -> None:
         """Set status message.
@@ -311,15 +311,15 @@ class ProgressWidget(QWidget):
             stats: Dictionary of statistics
         """
         text = f"Total: {stats.get('total_files', 0)} | "
-        text += f"Success: {stats.get('successful', 0)} | "
-        text += f"Failed: {stats.get('failed', 0)} | "
-        text += f"Replacements: {stats.get('total_replacements', 0)}"
+        text += f"成功: {stats.get('successful', 0)} | "
+        text += f"失败: {stats.get('failed', 0)} | "
+        text += f"替换次数: {stats.get('total_replacements', 0)}"
         self.stats_label.setText(text)
 
     def reset(self) -> None:
         """Reset progress widget."""
         self.progress_bar.setValue(0)
-        self.progress_label.setText("Ready")
+        self.progress_label.setText("就绪")
         self.stats_label.setText("")
 
 
@@ -345,11 +345,11 @@ class LogWidget(QWidget):
         # Buttons
         button_layout = QHBoxLayout()
 
-        self.copy_btn = QPushButton("Copy Log")
+        self.copy_btn = QPushButton("复制日志")
         self.copy_btn.clicked.connect(self.copy_log)
         button_layout.addWidget(self.copy_btn)
 
-        self.clear_btn = QPushButton("Clear Log")
+        self.clear_btn = QPushButton("清空日志")
         self.clear_btn.clicked.connect(self.clear_log)
         button_layout.addWidget(self.clear_btn)
 

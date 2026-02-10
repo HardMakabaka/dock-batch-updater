@@ -35,7 +35,7 @@ A Windows desktop application for batch updating DOCX documents with strict form
 
 #### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.8-3.12 (recommended; PyInstaller 5.13.0 may not work on Python 3.13)
 - Windows operating system
 
 #### Steps
@@ -53,22 +53,43 @@ A Windows desktop application for batch updating DOCX documents with strict form
 
 ## Building the Executable
 
-To build the standalone executable:
+### 完整打包流程
 
-1. Ensure all dependencies are installed:
-   ```bash
-   pip install -r requirements.txt
-   ```
+**步骤 1：准备环境**
+- 确保安装 Python 3.8-3.11（推荐 3.8）
+- Windows 操作系统
 
-2. Run the build script (Windows):
-   ```bash
-   build.bat
-   ```
+**步骤 2：安装依赖**
+```bash
+pip install -r requirements.txt
+```
 
-3. The executable will be created in the `dist` folder:
-   ```
-   dist/DOCX Batch Updater.exe
-   ```
+**步骤 3：执行打包**
+- 双击 `build.bat`
+- 或在命令行运行：`build.bat`
+
+**步骤 4：获取结果**
+- 打包完成后，exe 文件位于 `dist\DOCX Batch Updater.exe`
+- 文件大小约 39 MB
+
+**步骤 5：运行测试**
+- 直接双击 `DOCX Batch Updater.exe` 即可运行
+- 无需安装 Python 或其他依赖
+
+### PyInstaller 参数说明
+
+| 参数 | 说明 |
+|------|------|
+| `--windowed` | 不显示控制台窗口（GUI 应用） |
+| `--onefile` | 打包为单个 exe 文件 |
+| `--add-data="src;src"` | 包含 src 目录（GUI 和核心代码） |
+| `--hidden-import` | 显式导入 PyQt5 和 python-docx 的隐式依赖 |
+
+### 注意事项
+
+- Python 3.13 可能与 PyInstaller 5.13.0 不兼容，推荐使用 Python 3.8-3.11
+- 打包过程中出现的 "Hidden import 'sip' not found!" 警告可忽略，不影响运行
+- 打包时间约 30-60 秒，取决于计算机性能
 
 ## Usage Guide
 

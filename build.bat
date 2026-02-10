@@ -1,46 +1,41 @@
 @echo off
-REM Build script for DOCX Batch Updater using PyInstaller
+REM DOCX Batch Updater - Build Script
+REM 打包为单文件 exe
 
 echo ====================================
-echo DOCX Batch Updater - Build Script
+echo DOCX 批量更新器 - 开始打包
 echo ====================================
 echo.
 
-REM Check if Python is installed
-python --version >nul 2>&1
+REM 检查 Python
+python --version
 if %errorlevel% neq 0 (
-    echo ERROR: Python is not installed or not in PATH
+    echo ERROR: Python 未安装或不在 PATH 中
+    pause
     exit /b 1
 )
 
-echo Python found:
-python --version
+REM 安装依赖
 echo.
-
-REM Install dependencies
-echo Installing dependencies...
+echo [1/3] 安装依赖...
 pip install -r requirements.txt
 if %errorlevel% neq 0 (
-    echo ERROR: Failed to install dependencies
+    echo ERROR: 依赖安装失败
+    pause
     exit /b 1
 )
-echo Dependencies installed successfully
-echo.
 
-REM Clean previous build
-echo Cleaning previous build...
+REM 清理旧构建
+echo.
+echo [2/3] 清理旧构建文件...
 if exist "build" rmdir /s /q "build"
 if exist "dist" rmdir /s /q "dist"
 if exist "*.spec" del /q "*.spec"
-echo Previous build cleaned
-echo.
 
-REM Build with PyInstaller
-echo Building executable with PyInstaller...
-pyinstaller --name="DOCX Batch Updater" ^
-    --windowed ^
-    --onefile ^
-    --icon=NONE ^
+REM 执行打包
+echo.
+echo [3/3] 执行 PyInstaller 打包...
+pyinstaller --name="DOCX Batch Updater" --windowed --onefile ^
     --add-data="src;src" ^
     --hidden-import=PyQt5.sip ^
     --hidden-import=docx ^
@@ -51,21 +46,20 @@ pyinstaller --name="DOCX Batch Updater" ^
     src/main.py
 
 if %errorlevel% neq 0 (
-    echo ERROR: PyInstaller build failed
+    echo ERROR: 打包失败
+    pause
     exit /b 1
 )
-echo Build completed successfully
-echo.
 
-REM Show output location
-echo ====================================
-echo Build completed!
-echo ====================================
-echo Executable location: dist\DOCX Batch Updater.exe
 echo.
-echo You can now distribute the executable file.
-echo Note: The executable includes all dependencies and
-echo       can be run on Windows without Python installed.
 echo ====================================
-
+echo 打包完成！
+echo ====================================
+echo.
+echo 输出文件: dist\DOCX Batch Updater.exe
+echo 大小: 约 39 MB
+echo.
+echo 双击 exe 文件即可运行（无需安装 Python）
+echo ====================================
+echo.
 pause

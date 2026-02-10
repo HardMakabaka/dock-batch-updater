@@ -11,15 +11,19 @@ from PyQt5.QtWidgets import (
     QPushButton, QCheckBox, QSplitter, QMessageBox,
     QFileDialog, QApplication
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIcon
 
 from .widgets import FileListWidget, ReplacementRulesWidget, ProgressWidget, LogWidget
-from ..core.batch_processor import BatchProcessor, ProcessingResult
+from core.batch_processor import BatchProcessor, ProcessingResult
 
 
 class MainWindow(QMainWindow):
     """Main application window."""
+
+    logMessage = pyqtSignal(str, str)
+    progressUpdated = pyqtSignal(int, int)
+    statisticsUpdated = pyqtSignal(object)
 
     def __init__(self):
         """Initialize main window."""
@@ -33,7 +37,7 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """Initialize user interface."""
-        self.setWindowTitle("DOCX Batch Updater")
+        self.setWindowTitle("DOCX 批量更新器")
         self.setGeometry(100, 100, 1000, 700)
         self.setMinimumSize(800, 600)
 
@@ -61,11 +65,11 @@ class MainWindow(QMainWindow):
 
         # Backup checkbox
         backup_layout = QHBoxLayout()
-        self.backup_checkbox = QCheckBox("Create Backup Files")
+        self.backup_checkbox = QCheckBox("创建备份文件")
         self.backup_checkbox.setChecked(True)
         backup_layout.addWidget(self.backup_checkbox)
 
-        self.backup_dir_btn = QPushButton("Select Backup Directory...")
+        self.backup_dir_btn = QPushButton("选择备份目录…")
         self.backup_dir_btn.setEnabled(False)
         self.backup_dir_btn.clicked.connect(self.select_backup_directory)
         backup_layout.addWidget(self.backup_dir_btn)
@@ -96,7 +100,7 @@ class MainWindow(QMainWindow):
 
         control_layout.addStretch()
 
-        self.process_btn = QPushButton("Start Processing")
+        self.process_btn = QPushButton("开始处理")
         self.process_btn.setMinimumHeight(40)
         self.process_btn.setStyleSheet("""
             QPushButton {
@@ -119,7 +123,7 @@ class MainWindow(QMainWindow):
         self.process_btn.setEnabled(False)
         control_layout.addWidget(self.process_btn)
 
-        self.stop_btn = QPushButton("Stop")
+        self.stop_btn = QPushButton("停止")
         self.stop_btn.setMinimumHeight(40)
         self.stop_btn.setStyleSheet("""
             QPushButton {
@@ -156,6 +160,11 @@ class MainWindow(QMainWindow):
         # Backup checkbox state
         self.backup_checkbox.stateChanged.connect(self.on_backup_checkbox_changed)
 
+        # Thread-safe UI update signals
+        self.logMessage.connect(self.log_widget.log)
+        self.progressUpdated.connect(self.progress_widget.set_progress)
+        self.statisticsUpdated.connect(self.progress_widget.set_statistics)
+
     def on_backup_checkbox_changed(self, state: int) -> None:
         """Handle backup checkbox state change.
 
@@ -170,12 +179,12 @@ class MainWindow(QMainWindow):
         """Open dialog to select backup directory."""
         directory = QFileDialog.getExistingDirectory(
             self,
-            "Select Backup Directory"
+            "选择备份目录"
         )
 
         if directory:
             self.backup_dir = directory
-            self.log_widget.log(f"Backup directory set to: {directory}", "INFO")
+            self.log_widget.log(f"备份目录已设置为：{directory}", "INFO")
 
     def update_process_button(self) -> None:
         """Update process button state based on file and rule counts."""
@@ -190,18 +199,18 @@ class MainWindow(QMainWindow):
         rules = self.rules_widget.get_rules()
 
         if not files:
-            QMessageBox.warning(self, "No Files", "Please add files to process.")
+            QMessageBox.warning(self, "未选择文件", "请添加需要处理的文件。")
             return
 
         if not rules:
-            QMessageBox.warning(self, "No Rules", "Please add replacement rules.")
+            QMessageBox.warning(self, "未设置规则", "请添加替换规则。")
             return
 
         # Confirm before processing
         reply = QMessageBox.question(
             self,
-            "Confirm Processing",
-            f"Process {len(files)} file(s) with {len(rules)} replacement rule(s)?",
+            "确认处理",
+            f"将处理 {len(files)} 个文件，并应用 {len(rules)} 条替换规则。是否继续？",
             QMessageBox.Yes | QMessageBox.No
         )
 
@@ -219,16 +228,16 @@ class MainWindow(QMainWindow):
 
         # Reset progress
         self.progress_widget.reset()
-        self.progress_widget.set_status("Starting processing...")
+        self.progress_widget.set_status("开始处理…")
 
         # Log start
         self.log_widget.log("=" * 50, "INFO")
-        self.log_widget.log("Starting batch processing", "INFO")
-        self.log_widget.log(f"Files: {len(files)}", "INFO")
-        self.log_widget.log(f"Rules: {len(rules)}", "INFO")
-        self.log_widget.log(f"Backup: {'Yes' if self.backup_checkbox.isChecked() else 'No'}", "INFO")
+        self.log_widget.log("开始批量处理", "INFO")
+        self.log_widget.log(f"文件数：{len(files)}", "INFO")
+        self.log_widget.log(f"规则数：{len(rules)}", "INFO")
+        self.log_widget.log(f"备份：{'是' if self.backup_checkbox.isChecked() else '否'}", "INFO")
         if self.backup_checkbox.isChecked() and self.backup_dir:
-            self.log_widget.log(f"Backup directory: {self.backup_dir}", "INFO")
+            self.log_widget.log(f"备份目录：{self.backup_dir}", "INFO")
         self.log_widget.log("=" * 50, "INFO")
 
         # Start processing in thread
@@ -245,16 +254,20 @@ class MainWindow(QMainWindow):
                 self.backup_dir = backup_dir
                 self.progress_callback = progress_callback
                 self.result_callback = result_callback
+                self.error: Optional[str] = None
 
             def run(self):
-                self.processor.process_documents(
-                    self.files,
-                    self.rules,
-                    self.create_backup,
-                    self.backup_dir,
-                    self.progress_callback,
-                    self.result_callback
-                )
+                try:
+                    self.processor.process_documents(
+                        self.files,
+                        self.rules,
+                        self.create_backup,
+                        self.backup_dir,
+                        self.progress_callback,
+                        self.result_callback
+                    )
+                except Exception as e:
+                    self.error = str(e)
 
         self.processing_thread = ProcessingThread(
             self.batch_processor,
@@ -271,7 +284,7 @@ class MainWindow(QMainWindow):
     def stop_processing(self) -> None:
         """Stop current processing."""
         self.batch_processor.stop()
-        self.log_widget.log("Stopping processing...", "WARNING")
+        self.log_widget.log("正在停止处理…", "WARNING")
 
     def update_progress(self, current: int, total: int) -> None:
         """Update progress display.
@@ -280,14 +293,11 @@ class MainWindow(QMainWindow):
             current: Current progress value
             total: Total value
         """
-        from PyQt5.QtCore import QMetaObject, Qt, Q_ARG
-        QMetaObject.invokeMethod(
-            self.progress_widget,
-            'set_progress',
-            Qt.QueuedConnection,
-            Q_ARG(int, current),
-            Q_ARG(int, total)
-        )
+        self.progressUpdated.emit(current, total)
+
+    def log_async(self, message: str, level: str = "INFO") -> None:
+        """Thread-safe log helper."""
+        self.logMessage.emit(message, level)
 
     def handle_result(self, result: ProcessingResult) -> None:
         """Handle individual document processing result.
@@ -295,30 +305,22 @@ class MainWindow(QMainWindow):
         Args:
             result: Processing result
         """
-        from PyQt5.QtCore import QMetaObject, Qt
-
         filename = os.path.basename(result.file_path)
 
         if result.success:
-            self.log_widget.log(
-                f"{filename}: SUCCESS ({result.replacements} replacements)",
+            self.log_async(
+                f"{filename}：成功（替换 {result.replacements} 次）",
                 "SUCCESS"
             )
         else:
-            self.log_widget.log(
-                f"{filename}: FAILED - {result.message}",
+            self.log_async(
+                f"{filename}：失败 - {result.message}",
                 "ERROR"
             )
 
         # Update statistics
         summary = self.batch_processor.get_summary()
-        from PyQt5.QtCore import Q_ARG
-        QMetaObject.invokeMethod(
-            self.progress_widget,
-            'set_statistics',
-            Qt.QueuedConnection,
-            Q_ARG(object, summary)
-        )
+        self.statisticsUpdated.emit(summary)
 
     def processing_finished(self) -> None:
         """Handle processing completion."""
@@ -333,44 +335,51 @@ class MainWindow(QMainWindow):
         self.backup_checkbox.setEnabled(True)
         self.backup_dir_btn.setEnabled(self.backup_checkbox.isChecked())
 
+        thread_error = getattr(self.processing_thread, 'error', None)
+        if thread_error:
+            self.log_widget.log(f"处理线程异常：{thread_error}", "ERROR")
+            QMessageBox.critical(self, "处理失败", f"处理过程中发生未捕获异常：\n{thread_error}")
+            self.progress_widget.set_status("处理失败")
+            return
+
         # Get final summary
         summary = self.batch_processor.get_summary()
 
         # Log completion
         self.log_widget.log("=" * 50, "INFO")
-        self.log_widget.log("Processing completed", "INFO")
-        self.log_widget.log(f"Total files: {summary['total_files']}", "INFO")
-        self.log_widget.log(f"Successful: {summary['successful']}", "INFO")
-        self.log_widget.log(f"Failed: {summary['failed']}", "INFO")
-        self.log_widget.log(f"Total replacements: {summary['total_replacements']}", "INFO")
-        self.log_widget.log(f"Success rate: {summary['success_rate']:.1%}", "INFO")
+        self.log_widget.log("处理完成", "INFO")
+        self.log_widget.log(f"总文件数：{summary['total_files']}", "INFO")
+        self.log_widget.log(f"成功：{summary['successful']}", "INFO")
+        self.log_widget.log(f"失败：{summary['failed']}", "INFO")
+        self.log_widget.log(f"总替换次数：{summary['total_replacements']}", "INFO")
+        self.log_widget.log(f"成功率：{summary['success_rate']:.1%}", "INFO")
 
         if summary['failed'] > 0:
-            self.log_widget.log("\nFailed files:", "WARNING")
+            self.log_widget.log("\n失败文件：", "WARNING")
             for result in self.batch_processor.get_failed_results():
                 self.log_widget.log(
-                    f"  - {os.path.basename(result.file_path)}: {result.message}",
+                    f"  - {os.path.basename(result.file_path)}：{result.message}",
                     "WARNING"
                 )
 
         self.log_widget.log("=" * 50, "INFO")
 
         # Show summary message
-        self.progress_widget.set_status("Processing completed")
+        self.progress_widget.set_status("处理完成")
 
         if summary['failed'] > 0:
             QMessageBox.warning(
                 self,
-                "Processing Completed with Errors",
-                f"Processed {summary['total_files']} files.\n"
-                f"Successful: {summary['successful']}\n"
-                f"Failed: {summary['failed']}\n"
-                f"Check log for details."
+                "处理完成（有错误）",
+                f"已处理 {summary['total_files']} 个文件。\n"
+                f"成功：{summary['successful']}\n"
+                f"失败：{summary['failed']}\n"
+                f"详情请查看日志。"
             )
         else:
             QMessageBox.information(
                 self,
-                "Processing Completed Successfully",
-                f"Successfully processed {summary['successful']} files.\n"
-                f"Total replacements: {summary['total_replacements']}"
+                "处理完成",
+                f"成功处理 {summary['successful']} 个文件。\n"
+                f"总替换次数：{summary['total_replacements']}"
             )

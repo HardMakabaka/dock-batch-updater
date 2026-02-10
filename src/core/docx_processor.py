@@ -14,7 +14,7 @@ from docx.text.paragraph import Paragraph
 from docx.table import Table, _Cell
 from docx.oxml.text.paragraph import CT_P
 
-from ..utils.format_preserver import FormatPreserver
+from utils.format_preserver import FormatPreserver
 
 
 class DocxProcessor:
@@ -167,17 +167,58 @@ class DocxProcessor:
             return 0
 
         count = 0
-        for run_idx, run in enumerate(paragraph.runs):
-            if search_text in run.text:
-                # Capture formatting before modification
-                format_data = self.format_preserver.capture_run_format(run)
+        search_start = 0
 
-                # Replace text
-                run.text = run.text.replace(search_text, replace_text)
-                count += run.text.count(replace_text)
+        while True:
+            paragraph_text = paragraph.text
+            match_index = paragraph_text.find(search_text, search_start)
+            if match_index == -1:
+                break
 
-                # Apply preserved formatting to the new text
-                self.format_preserver.apply_run_format(run, format_data)
+            start_pos = match_index
+            end_pos = match_index + len(search_text)
+
+            current_pos = 0
+            start_run_idx = None
+            end_run_idx = None
+            start_offset = 0
+            end_offset = 0
+
+            for run_idx, run in enumerate(paragraph.runs):
+                run_text = run.text
+                run_end = current_pos + len(run_text)
+
+                if start_run_idx is None and start_pos < run_end:
+                    start_run_idx = run_idx
+                    start_offset = start_pos - current_pos
+
+                if end_pos <= run_end:
+                    end_run_idx = run_idx
+                    end_offset = end_pos - current_pos
+                    break
+
+                current_pos = run_end
+
+            if start_run_idx is None or end_run_idx is None:
+                break
+
+            start_run = paragraph.runs[start_run_idx]
+            end_run = paragraph.runs[end_run_idx]
+            format_data = self.format_preserver.capture_run_format(start_run)
+
+            new_text = (
+                start_run.text[:start_offset]
+                + replace_text
+                + end_run.text[end_offset:]
+            )
+            start_run.text = new_text
+            self.format_preserver.apply_run_format(start_run, format_data)
+
+            for idx in range(start_run_idx + 1, end_run_idx + 1):
+                paragraph.runs[idx].text = ""
+
+            count += 1
+            search_start = match_index + len(replace_text)
 
         return count
 

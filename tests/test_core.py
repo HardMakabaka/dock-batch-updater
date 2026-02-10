@@ -116,7 +116,7 @@ class TestDocxProcessor(unittest.TestCase):
 
         count = processor.replace_text("2024", "2025")
 
-        self.assertEqual(count, 5)  # 2 paragraphs + 4 table cells
+        self.assertEqual(count, 6)  # 2 paragraphs + 4 table cells
 
         # Save and reload to verify
         processor.save(os.path.join(self.temp_dir, "output.docx"))
