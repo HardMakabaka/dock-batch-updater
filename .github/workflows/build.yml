@@ -35,10 +35,7 @@ jobs:
           python -m unittest discover -s tests -p "test*.py" -v
 
       - name: Clean previous build
-        run: |
-          if exist build rmdir /s /q build
-          if exist dist rmdir /s /q dist
-          if exist "*.spec" del /q "*.spec"
+        run: if exist build (rmdir /s /q build) else if exist dist (rmdir /s /q dist) else if exist "*.spec" (del /q "*.spec")
 
       - name: Build executable with PyInstaller
         run: |
