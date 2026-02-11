@@ -1,0 +1,47 @@
+{
+  "default_branch": "master",
+  "index": {
+    "env": "ENV_INDEX.md",
+    "project": "PROJECT_INDEX.md"
+  },
+  "project_trigger_patterns": [
+    "src/**/*.py",
+    "tests/**/*.py",
+    "requirements.txt",
+    "build.bat"
+  ],
+  "high_risk_patterns": [
+    ".github/workflows/*.yml",
+    "openclaw.yml",
+    ".policy/*.json"
+  ],
+  "exclude_patterns": [
+    "**/__pycache__/**",
+    "**/*.pyc",
+    ".coverage",
+    "build/**",
+    "dist/**",
+    "*.spec"
+  ],
+  "allowed_env_index_authors": [
+    "OpenClaw",
+    "OpenCode"
+  ],
+  "project_index_required_sections": [
+    "迁移文件",
+    "入口与编排文件",
+    "核心自建模块",
+    "CI/CD 与部署相关文件"
+  ],
+  "project_index_forbidden": {
+    "absolute_paths": true,
+    "sensitive_info": true
+  },
+  "env_index_requirements": {
+    "must_be_absolute_paths": true,
+    "format": "path + one-sentence description",
+    "forbidden": {
+      "sensitive_info": true
+    }
+  }
+}
