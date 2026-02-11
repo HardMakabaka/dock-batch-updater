@@ -35,9 +35,14 @@ jobs:
           python -m unittest discover -s tests -p "test*.py" -v
 
       - name: Clean previous build
-        run: if exist build (rmdir /s /q build) else if exist dist (rmdir /s /q dist) else if exist "*.spec" (del /q "*.spec")
+        shell: pwsh
+        run: |
+          if (Test-Path build) { Remove-Item -Recurse -Force build }
+          if (Test-Path dist) { Remove-Item -Recurse -Force dist }
+          if (Test-Path "*.spec") { Remove-Item "*.spec" }
 
       - name: Build executable with PyInstaller
+        shell: pwsh
         run: |
           pyinstaller --name="DOCX Batch Updater" --windowed --onefile --add-data="src;src" --hidden-import=PyQt5.sip --hidden-import=docx --hidden-import=docx.opc.constants --hidden-import=docx.oxml --hidden-import=docx.oxml.text.paragraph --hidden-import=docx.oxml.table src/main.py
 
