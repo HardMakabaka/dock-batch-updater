@@ -35,6 +35,7 @@ jobs:
             core.setOutput('default_branch', config.default_branch);
             core.setOutput('project_index', config.index.project);
             core.setOutput('env_index', config.index.env);
+            core.setOutput('config', JSON.stringify(config));
             return config;
 
       - name: Check PR base branch
@@ -42,7 +43,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
             const defaultBranch = config.default_branch;
             const baseRef = context.payload.pull_request.base.ref;
 
@@ -56,13 +57,15 @@ jobs:
               console.log('PR is targeting default branch. Enforcing policies.');
               core.setOutput('should_enforce', 'true');
             }
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
 
       - name: Get changed files
         id: changed-files
         uses: actions/github-script@v7
         with:
           script: |
-            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
             const baseRef = context.payload.pull_request.base.ref;
             const headRef = context.payload.pull_request.head.sha;
 
@@ -78,6 +81,8 @@ jobs:
 
             core.setOutput('changed_files', JSON.stringify(changedFiles));
             return changedFiles;
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
 
       - name: Check PROJECT_INDEX.md update requirement
         id: project-index-check
@@ -85,8 +90,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
-            const changedFiles = JSON.parse(steps['changed-files'].outputs.changed_files);
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const changedFiles = JSON.parse(process.env.CHANGED_FILES);
             const projectIndexFile = config.index.project;
 
             console.log('Checking PROJECT_INDEX.md update requirement...');
@@ -124,6 +129,9 @@ Please update PROJECT_INDEX.md to reflect the changes.`);
             } else {
               console.log('No project trigger patterns matched. Skipping PROJECT_INDEX.md check.');
             }
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
 
       - name: Validate PROJECT_INDEX.md content
         id: project-index-content
@@ -131,8 +139,8 @@ Please update PROJECT_INDEX.md to reflect the changes.`);
         uses: actions/github-script@v7
         with:
           script: |
-            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
-            const changedFiles = JSON.parse(steps['changed-files'].outputs.changed_files);
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const changedFiles = JSON.parse(process.env.CHANGED_FILES);
             const projectIndexFile = config.index.project;
             const fs = require('fs');
 
@@ -197,6 +205,9 @@ Please remove sensitive information.`);
             }
 
             console.log('✅ PROJECT_INDEX.md content validation passed');
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
 
       - name: Check ENV_INDEX.md author
         id: env-index-author
@@ -204,8 +215,8 @@ Please remove sensitive information.`);
         uses: actions/github-script@v7
         with:
           script: |
-            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
-            const changedFiles = JSON.parse(steps['changed-files'].outputs.changed_files);
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const changedFiles = JSON.parse(process.env.CHANGED_FILES);
             const envIndexFile = config.index.env;
             const fs = require('fs');
             const prAuthor = context.payload.pull_request.user.login;
@@ -249,6 +260,9 @@ If you believe this is an error, please contact an authorized maintainer.`);
             } else {
               console.log('✅ ENV_INDEX.md author validation passed');
             }
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
 
       - name: Validate ENV_INDEX.md content
         id: env-index-content
@@ -256,7 +270,7 @@ If you believe this is an error, please contact an authorized maintainer.`);
         uses: actions/github-script@v7
         with:
           script: |
-            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
             const envIndexFile = config.index.env;
             const fs = require('fs');
 
@@ -306,6 +320,8 @@ Please remove sensitive information.`);
             }
 
             console.log('✅ ENV_INDEX.md content validation passed');
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
 
       - name: Check HIGH RISK markers
         id: high-risk-check
@@ -313,8 +329,8 @@ Please remove sensitive information.`);
         uses: actions/github-script@v7
         with:
           script: |
-            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
-            const changedFiles = JSON.parse(steps['changed-files'].outputs.changed_files);
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const changedFiles = JSON.parse(process.env.CHANGED_FILES);
             const prBody = context.payload.pull_request.body || '';
             const prState = context.payload.pull_request.state;
 
@@ -363,6 +379,9 @@ Please update the PR description with the required markers and rollback plan.`);
             } else {
               console.log('✅ HIGH RISK validation passed');
             }
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
 
       - name: Check PR ready status and existing failures
         id: ready-status-check
@@ -370,6 +389,7 @@ Please update the PR description with the required markers and rollback plan.`);
         uses: actions/github-script@v7
         with:
           script: |
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
             const prNumber = context.issue.number;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -415,3 +435,5 @@ Waiting for checks to complete...`);
             } else {
               console.log('✅ PR ready status check passed');
             }
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
