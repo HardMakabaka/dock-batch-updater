@@ -26,6 +26,58 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Validate PROJECT_INDEX.md
+        run: |
+          # 检查 PROJECT_INDEX.md 是否存在
+          if [ ! -f "PROJECT_INDEX.md" ]; then
+            echo "❌ PROJECT_INDEX.md is missing"
+            exit 1
+          fi
+          # 检查是否包含必要的索引内容
+          if ! grep -q "迁移文件" PROJECT_INDEX.md; then
+            echo "❌ PROJECT_INDEX.md missing migration files section"
+            exit 1
+          fi
+          if ! grep -q "入口与编排文件" PROJECT_INDEX.md; then
+            echo "❌ PROJECT_INDEX.md missing entry points section"
+            exit 1
+          fi
+          echo "✅ PROJECT_INDEX.md validation passed"
+
+      - name: Check ENV_INDEX.md author
+        run: |
+          # 检查 ENV_INDEX.md 是否存在
+          if [ ! -f "ENV_INDEX.md" ]; then
+            echo "❌ ENV_INDEX.md is missing"
+            exit 1
+          fi
+          # 检查维护者信息
+          if ! grep -q "维护者.*OpenClaw" ENV_INDEX.md; then
+            echo "❌ ENV_INDEX.md must be maintained by OpenClaw"
+            exit 1
+          fi
+          echo "✅ ENV_INDEX.md author validation passed"
+
+      - name: Check HIGH RISK markers
+        run: |
+          # 检查高风险文件变更是否有 HIGH RISK 标记
+          HIGH_RISK_FILES=(".github/workflows/build.yml" "openclaw.yml")
+          PR_BODY="${{ github.event.pull_request.body }}"
+          
+          for file in "${HIGH_RISK_FILES[@]}"; do
+            if git diff --name-only HEAD~1 HEAD | grep -q "$file"; then
+              if ! echo "$PR_BODY" | grep -q "HIGH RISK"; then
+                echo "❌ HIGH RISK file changed but PR not marked HIGH RISK"
+                exit 1
+              fi
+              if ! echo "$PR_BODY" | grep -q "回滚方案"; then
+                echo "❌ HIGH RISK file changed but no rollback plan provided"
+                exit 1
+              fi
+            fi
+          done
+          echo "✅ HIGH RISK validation passed"
+
       - name: Run tests
         run: |
           python -m unittest discover -s tests -p "test*.py" -v
