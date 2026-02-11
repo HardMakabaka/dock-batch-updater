@@ -5,7 +5,6 @@ name: Policy Guard
 on:
   pull_request:
     types: [opened, reopened, synchronize, edited, ready_for_review]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,6 +16,7 @@ jobs:
   policy-guard:
     name: Policy Validation
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
 
     steps:
       - name: Checkout repository
@@ -42,7 +42,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const config = ${{ steps.load-config.outputs.result }};
+            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
             const defaultBranch = config.default_branch;
             const baseRef = context.payload.pull_request.base.ref;
 
@@ -62,7 +62,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const config = ${{ steps.load-config.outputs.result }};
+            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
             const baseRef = context.payload.pull_request.base.ref;
             const headRef = context.payload.pull_request.head.sha;
 
@@ -85,7 +85,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const config = ${{ steps.load-config.outputs.result }};
+            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
             const changedFiles = JSON.parse(steps['changed-files'].outputs.changed_files);
             const projectIndexFile = config.index.project;
 
@@ -131,7 +131,7 @@ Please update PROJECT_INDEX.md to reflect the changes.`);
         uses: actions/github-script@v7
         with:
           script: |
-            const config = ${{ steps.load-config.outputs.result }};
+            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
             const changedFiles = JSON.parse(steps['changed-files'].outputs.changed_files);
             const projectIndexFile = config.index.project;
             const fs = require('fs');
@@ -204,7 +204,7 @@ Please remove sensitive information.`);
         uses: actions/github-script@v7
         with:
           script: |
-            const config = ${{ steps.load-config.outputs.result }};
+            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
             const changedFiles = JSON.parse(steps['changed-files'].outputs.changed_files);
             const envIndexFile = config.index.env;
             const fs = require('fs');
@@ -256,7 +256,7 @@ If you believe this is an error, please contact an authorized maintainer.`);
         uses: actions/github-script@v7
         with:
           script: |
-            const config = ${{ steps.load-config.outputs.result }};
+            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
             const envIndexFile = config.index.env;
             const fs = require('fs');
 
@@ -313,7 +313,7 @@ Please remove sensitive information.`);
         uses: actions/github-script@v7
         with:
           script: |
-            const config = ${{ steps.load-config.outputs.result }};
+            const config = JSON.parse('${{ steps.load-config.outputs.result }}');
             const changedFiles = JSON.parse(steps['changed-files'].outputs.changed_files);
             const prBody = context.payload.pull_request.body || '';
             const prState = context.payload.pull_request.state;
