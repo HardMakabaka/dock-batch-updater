@@ -1,0 +1,32 @@
+# OpenClaw 项目配置 (PER-REPO CONFIG)
+# 此文件定义项目的开发流程和验证命令
+
+# 主干分支名
+default_branch: master
+
+# CI/CD 检查配置
+checks:
+  # 主要验证命令（必填）：运行测试
+  ci: python -m unittest discover -s tests -p "test*.py"
+
+  # 代码风格检查（可选）
+  lint: null  # 示例: flake8 src/
+
+  # 构建命令（可选）
+  build: null  # 示例: pyinstaller --onefile src/main.py
+
+# 部署模式
+# - none: 不自动化部署
+# - ssh: 通过 SSH 部署到远程服务器
+# - container: 容器化部署
+# - release-only: 仅在 Tag 时发布
+deploy_mode: release-only
+
+# 高风险路径模式列表（可选）
+# 涉及以下路径的变更将被标记为 HIGH RISK
+high_risk_paths:
+  - "src/security/**"
+  - "src/auth/**"
+  - "requirements.txt"
+  - ".github/workflows/**"
+  - "openclaw.yml"

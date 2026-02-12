@@ -1,0 +1,439 @@
+name: Policy Guard
+
+# Trigger on pull requests with various actions
+# Only enforces when PR is targeting the default branch
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: read
+  statuses: read
+
+jobs:
+  policy-guard:
+    name: Policy Validation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history to support file diff analysis
+          fetch-depth: 0
+
+      - name: Load policy configuration
+        id: load-config
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const config = JSON.parse(fs.readFileSync('.policy/policy-guard.json', 'utf8'));
+            core.setOutput('default_branch', config.default_branch);
+            core.setOutput('project_index', config.index.project);
+            core.setOutput('env_index', config.index.env);
+            core.setOutput('config', JSON.stringify(config));
+            return config;
+
+      - name: Check PR base branch
+        id: check-base
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const defaultBranch = config.default_branch;
+            const baseRef = context.payload.pull_request.base.ref;
+
+            console.log(`Default branch: ${defaultBranch}`);
+            console.log(`PR base ref: ${baseRef}`);
+
+            if (baseRef !== defaultBranch) {
+              console.log('PR is not targeting default branch. Skipping policy enforcement.');
+              core.setOutput('should_enforce', 'false');
+            } else {
+              console.log('PR is targeting default branch. Enforcing policies.');
+              core.setOutput('should_enforce', 'true');
+            }
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
+
+      - name: Get changed files
+        id: changed-files
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const baseRef = context.payload.pull_request.base.ref;
+            const headRef = context.payload.pull_request.head.sha;
+
+            // Get changed files between base and PR head
+            const result = await github.rest.repos.compareCommitsWithBasehead({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              basehead: `${baseRef}...${headRef}`
+            });
+
+            const changedFiles = result.data.files.map(f => f.filename);
+            console.log('Changed files:', changedFiles);
+
+            core.setOutput('changed_files', JSON.stringify(changedFiles));
+            return changedFiles;
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
+
+      - name: Check PROJECT_INDEX.md update requirement
+        id: project-index-check
+        if: steps.check-base.outputs.should_enforce == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const changedFiles = JSON.parse(process.env.CHANGED_FILES);
+            const projectIndexFile = config.index.project;
+
+            console.log('Checking PROJECT_INDEX.md update requirement...');
+
+            // Check if any project trigger pattern is changed
+            const projectTriggerPatterns = config.project_trigger_patterns || [];
+            const relevantChanges = changedFiles.filter(file => {
+              return projectTriggerPatterns.some(pattern => {
+                // Convert glob pattern to regex (simple implementation)
+                const regexPattern = pattern
+                  .replace(/\*\*/g, '.*')
+                  .replace(/\*/g, '[^/]*')
+                  .replace(/\?/g, '.');
+                return new RegExp(regexPattern).test(file);
+              });
+            });
+
+            console.log('Relevant changes:', relevantChanges);
+
+            if (relevantChanges.length > 0) {
+              console.log(`Project trigger patterns matched: ${relevantChanges.length} files`);
+
+              // Check if PROJECT_INDEX.md is in changed files
+              const indexChanged = changedFiles.includes(projectIndexFile);
+              if (!indexChanged) {
+                core.setFailed(`❌ Policy Violation: Project structure files changed but PROJECT_INDEX.md (${projectIndexFile}) was not updated.
+
+Changed files that trigger index update:
+${relevantChanges.map(f => `  - ${f}`).join('\n')}
+
+Please update PROJECT_INDEX.md to reflect the changes.`);
+              } else {
+                console.log('✅ PROJECT_INDEX.md has been updated');
+              }
+            } else {
+              console.log('No project trigger patterns matched. Skipping PROJECT_INDEX.md check.');
+            }
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+
+      - name: Validate PROJECT_INDEX.md content
+        id: project-index-content
+        if: steps.check-base.outputs.should_enforce == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const changedFiles = JSON.parse(process.env.CHANGED_FILES);
+            const projectIndexFile = config.index.project;
+            const fs = require('fs');
+
+            // Only validate if PROJECT_INDEX.md exists and was changed
+            if (!fs.existsSync(projectIndexFile)) {
+              core.setFailed(`❌ Policy Violation: ${projectIndexFile} does not exist.`);
+              return;
+            }
+
+            const content = fs.readFileSync(projectIndexFile, 'utf8');
+            const errors = [];
+
+            // Check forbidden absolute paths
+            if (config.project_index_forbidden?.absolute_paths) {
+              const absolutePathPattern = /^[A-Za-z]:\\/|^(\/)/;
+              const lines = content.split('\n');
+              lines.forEach((line, idx) => {
+                if (absolutePathPattern.test(line) && line.trim().length > 0) {
+                  errors.push(`Line ${idx + 1}: Contains absolute path "${line.trim()}"`);
+                }
+              });
+              if (errors.length > 0) {
+                core.setFailed(`❌ Policy Violation: PROJECT_INDEX.md contains absolute paths.
+
+${errors.join('\n')}
+
+Please use relative paths only.`);
+              }
+            }
+
+            // Check required sections
+            const requiredSections = config.project_index_required_sections || [];
+            const missingSections = requiredSections.filter(section => {
+              return !content.includes(`## ${section}`);
+            });
+
+            if (missingSections.length > 0) {
+              core.setFailed(`❌ Policy Violation: PROJECT_INDEX.md is missing required sections.
+
+Missing sections:
+${missingSections.map(s => `  - ${s}`).join('\n')}
+
+Please add these sections to the index.`);
+            }
+
+            // Check for sensitive information (basic check)
+            if (config.project_index_forbidden?.sensitive_info) {
+              const sensitivePatterns = [
+                /password\s*[:=]\s*\S+/i,
+                /api[_-]?key\s*[:=]\s*\S+/i,
+                /secret\s*[:=]\s*\S+/i,
+                /token\s*[:=]\s*\S+/i
+              ];
+              for (const pattern of sensitivePatterns) {
+                if (pattern.test(content)) {
+                  core.setFailed(`❌ Policy Violation: PROJECT_INDEX.md contains sensitive information.
+
+Found pattern: ${pattern}
+Please remove sensitive information.`);
+                }
+              }
+            }
+
+            console.log('✅ PROJECT_INDEX.md content validation passed');
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+
+      - name: Check ENV_INDEX.md author
+        id: env-index-author
+        if: steps.check-base.outputs.should_enforce == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const changedFiles = JSON.parse(process.env.CHANGED_FILES);
+            const envIndexFile = config.index.env;
+            const fs = require('fs');
+            const prAuthor = context.payload.pull_request.user.login;
+
+            console.log('Checking ENV_INDEX.md author...');
+
+            // Check if ENV_INDEX.md is in changed files
+            const indexChanged = changedFiles.includes(envIndexFile);
+            if (!indexChanged) {
+              console.log('ENV_INDEX.md not changed. Skipping author check.');
+              return;
+            }
+
+            // Check if file exists
+            if (!fs.existsSync(envIndexFile)) {
+              core.setFailed(`❌ Policy Violation: ${envIndexFile} does not exist.`);
+              return;
+            }
+
+            const content = fs.readFileSync(envIndexFile, 'utf8');
+            const allowedAuthors = config.allowed_env_index_authors || [];
+
+            console.log(`PR Author: ${prAuthor}`);
+            console.log(`Allowed authors: ${allowedAuthors.join(', ')}`);
+
+            // Check if PR author is in allowed list
+            // Note: This is a simplified check. In practice, you may want to check
+            // the actual commit author or use a more sophisticated method.
+            const isAllowed = allowedAuthors.some(author => {
+              return content.includes(author);
+            });
+
+            if (!isAllowed) {
+              core.setFailed(`❌ Policy Violation: ENV_INDEX.md was modified but not by an authorized maintainer.
+
+PR Author: ${prAuthor}
+Allowed maintainers: ${allowedAuthors.join(', ')}
+
+Only maintainers listed in the policy guard configuration may modify ENV_INDEX.md.
+If you believe this is an error, please contact an authorized maintainer.`);
+            } else {
+              console.log('✅ ENV_INDEX.md author validation passed');
+            }
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+
+      - name: Validate ENV_INDEX.md content
+        id: env-index-content
+        if: steps.check-base.outputs.should_enforce == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const envIndexFile = config.index.env;
+            const fs = require('fs');
+
+            // Skip if file doesn't exist (author check already handles this)
+            if (!fs.existsSync(envIndexFile)) {
+              return;
+            }
+
+            const content = fs.readFileSync(envIndexFile, 'utf8');
+            const lines = content.split('\n').filter(line => line.trim().length > 0);
+            const errors = [];
+
+            // Check that paths are absolute (not relative)
+            if (config.env_index_requirements?.must_be_absolute_paths) {
+              const relativePathPattern = /^[^/].*\/.*|^\.\./;
+              lines.forEach((line, idx) => {
+                if (relativePathPattern.test(line) && !line.startsWith('#')) {
+                  // Allow comment lines
+                  errors.push(`Line ${idx + 1}: Contains relative path "${line.trim()}"`);
+                }
+              });
+              if (errors.length > 0) {
+                core.setFailed(`❌ Policy Violation: ENV_INDEX.md contains relative paths.
+
+${errors.join('\n')}
+
+ENV_INDEX.md must use absolute paths only.`);
+              }
+            }
+
+            // Check for sensitive information
+            if (config.env_index_requirements?.forbidden?.sensitive_info) {
+              const sensitivePatterns = [
+                /password\s*[:=]\s*\S+/i,
+                /api[_-]?key\s*[:=]\s*\S+/i,
+                /secret\s*[:=]\s*\S+/i,
+                /token\s*[:=]\s*\S+/i
+              ];
+              for (const pattern of sensitivePatterns) {
+                if (pattern.test(content)) {
+                  core.setFailed(`❌ Policy Violation: ENV_INDEX.md contains sensitive information.
+
+Found pattern: ${pattern}
+Please remove sensitive information.`);
+                }
+              }
+            }
+
+            console.log('✅ ENV_INDEX.md content validation passed');
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
+
+      - name: Check HIGH RISK markers
+        id: high-risk-check
+        if: steps.check-base.outputs.should_enforce == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const changedFiles = JSON.parse(process.env.CHANGED_FILES);
+            const prBody = context.payload.pull_request.body || '';
+            const prState = context.payload.pull_request.state;
+
+            console.log('Checking HIGH RISK markers...');
+
+            // Check if any high risk pattern files are changed
+            const highRiskPatterns = config.high_risk_patterns || [];
+            const highRiskFilesChanged = changedFiles.filter(file => {
+              return highRiskPatterns.some(pattern => {
+                const regexPattern = pattern
+                  .replace(/\*\*/g, '.*')
+                  .replace(/\*/g, '[^/]*');
+                return new RegExp(regexPattern).test(file);
+              });
+            });
+
+            if (highRiskFilesChanged.length === 0) {
+              console.log('No high risk files changed. Skipping HIGH RISK check.');
+              return;
+            }
+
+            console.log(`High risk files changed: ${highRiskFilesChanged.join(', ')}`);
+
+            const errors = [];
+
+            // Check for "HIGH RISK" marker
+            if (!prBody.toUpperCase().includes('HIGH RISK')) {
+              errors.push('PR description must contain "HIGH RISK" to indicate awareness of the risk.');
+            }
+
+            // Check for rollback plan section
+            if (!prBody.includes('## Rollback Plan') && !prBody.includes('## 回滚方案')) {
+              errors.push('PR description must include a rollback plan (## Rollback Plan or ## 回滚方案).');
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(`❌ Policy Violation: High risk files changed but PR does not meet requirements.
+
+Changed high risk files:
+${highRiskFilesChanged.map(f => `  - ${f}`).join('\n')}
+
+Required actions:
+${errors.map(e => `  - ${e}`).join('\n')}
+
+Please update the PR description with the required markers and rollback plan.`);
+            } else {
+              console.log('✅ HIGH RISK validation passed');
+            }
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+
+      - name: Check PR ready status and existing failures
+        id: ready-status-check
+        if: steps.check-base.outputs.should_enforce == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const config = JSON.parse(process.env.POLICY_GUARD_CONFIG);
+            const prNumber = context.issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request;
+
+            console.log('Checking PR ready status...');
+
+            // Skip if PR is in draft or not ready for review
+            if (pr.draft || !pr.mergeable || pr.state !== 'open') {
+              console.log('PR is in draft or not ready. Skipping status check.');
+              return;
+            }
+
+            // Get check runs for this PR
+            const checks = await github.rest.checks.listForRef({
+              owner: owner,
+              repo: repo,
+              ref: pr.head.sha
+            });
+
+            const failedChecks = checks.data.check_runs.filter(check =>
+              check.conclusion === 'failure'
+            );
+
+            const pendingChecks = checks.data.check_runs.filter(check =>
+              check.status === 'in_progress' || check.status === 'queued'
+            );
+
+            if (failedChecks.length > 0) {
+              core.setFailed(`❌ Policy Violation: PR is ready for review but has failed checks.
+
+Failed checks:
+${failedChecks.map(c => `  - ${c.name}: ${c.conclusion}`).join('\n')}
+
+Please fix the failing checks before marking PR as ready for review.`);
+            } else if (pendingChecks.length > 0) {
+              core.warning(`⚠️ Warning: PR is ready for review but has pending checks.
+
+Pending checks:
+${pendingChecks.map(c => `  - ${c.name}: ${c.status}`).join('\n')}
+
+Waiting for checks to complete...`);
+            } else {
+              console.log('✅ PR ready status check passed');
+            }
+        env:
+          POLICY_GUARD_CONFIG: ${{ steps.load-config.outputs.config }}
