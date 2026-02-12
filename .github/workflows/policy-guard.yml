@@ -117,12 +117,10 @@ jobs:
               // Check if PROJECT_INDEX.md is in changed files
               const indexChanged = changedFiles.includes(projectIndexFile);
               if (!indexChanged) {
-                core.setFailed(`❌ Policy Violation: Project structure files changed but PROJECT_INDEX.md (${projectIndexFile}) was not updated.
-
-Changed files that trigger index update:
-${relevantChanges.map(f => `  - ${f}`).join('\n')}
-
-Please update PROJECT_INDEX.md to reflect the changes.`);
+                core.setFailed('❌ Policy Violation: Project structure files changed but PROJECT_INDEX.md (' + projectIndexFile + ') was not updated.\n\n' +
+                  'Changed files that trigger index update:\n' +
+                  relevantChanges.map(f => '  - ' + f).join('\n') + '\n\n' +
+                  'Please update PROJECT_INDEX.md to reflect the changes.');
               } else {
                 console.log('✅ PROJECT_INDEX.md has been updated');
               }
@@ -163,11 +161,9 @@ Please update PROJECT_INDEX.md to reflect the changes.`);
                 }
               });
               if (errors.length > 0) {
-                core.setFailed(`❌ Policy Violation: PROJECT_INDEX.md contains absolute paths.
-
-${errors.join('\n')}
-
-Please use relative paths only.`);
+                core.setFailed('❌ Policy Violation: PROJECT_INDEX.md contains absolute paths.\n\n' +
+                  errors.join('\n') + '\n\n' +
+                  'Please use relative paths only.');
               }
             }
 
@@ -178,12 +174,10 @@ Please use relative paths only.`);
             });
 
             if (missingSections.length > 0) {
-              core.setFailed(`❌ Policy Violation: PROJECT_INDEX.md is missing required sections.
-
-Missing sections:
-${missingSections.map(s => `  - ${s}`).join('\n')}
-
-Please add these sections to the index.`);
+              core.setFailed('❌ Policy Violation: PROJECT_INDEX.md is missing required sections.\n\n' +
+                'Missing sections:\n' +
+                missingSections.map(s => '  - ' + s).join('\n') + '\n\n' +
+                'Please add these sections to the index.');
             }
 
             // Check for sensitive information (basic check)
@@ -196,10 +190,9 @@ Please add these sections to the index.`);
               ];
               for (const pattern of sensitivePatterns) {
                 if (pattern.test(content)) {
-                  core.setFailed(`❌ Policy Violation: PROJECT_INDEX.md contains sensitive information.
-
-Found pattern: ${pattern}
-Please remove sensitive information.`);
+                  core.setFailed('❌ Policy Violation: PROJECT_INDEX.md contains sensitive information.\n\n' +
+                    'Found pattern: ' + pattern + '\n' +
+                    'Please remove sensitive information.');
                 }
               }
             }
@@ -250,13 +243,11 @@ Please remove sensitive information.`);
             });
 
             if (!isAllowed) {
-              core.setFailed(`❌ Policy Violation: ENV_INDEX.md was modified but not by an authorized maintainer.
-
-PR Author: ${prAuthor}
-Allowed maintainers: ${allowedAuthors.join(', ')}
-
-Only maintainers listed in the policy guard configuration may modify ENV_INDEX.md.
-If you believe this is an error, please contact an authorized maintainer.`);
+              core.setFailed('❌ Policy Violation: ENV_INDEX.md was modified but not by an authorized maintainer.\n\n' +
+                'PR Author: ' + prAuthor + '\n' +
+                'Allowed maintainers: ' + allowedAuthors.join(', ') + '\n\n' +
+                'Only maintainers listed in the policy guard configuration may modify ENV_INDEX.md.\n' +
+                'If you believe this is an error, please contact an authorized maintainer.');
             } else {
               console.log('✅ ENV_INDEX.md author validation passed');
             }
@@ -293,11 +284,9 @@ If you believe this is an error, please contact an authorized maintainer.`);
                 }
               });
               if (errors.length > 0) {
-                core.setFailed(`❌ Policy Violation: ENV_INDEX.md contains relative paths.
-
-${errors.join('\n')}
-
-ENV_INDEX.md must use absolute paths only.`);
+                core.setFailed('❌ Policy Violation: ENV_INDEX.md contains relative paths.\n\n' +
+                  errors.join('\n') + '\n\n' +
+                  'ENV_INDEX.md must use absolute paths only.');
               }
             }
 
@@ -311,10 +300,9 @@ ENV_INDEX.md must use absolute paths only.`);
               ];
               for (const pattern of sensitivePatterns) {
                 if (pattern.test(content)) {
-                  core.setFailed(`❌ Policy Violation: ENV_INDEX.md contains sensitive information.
-
-Found pattern: ${pattern}
-Please remove sensitive information.`);
+                  core.setFailed('❌ Policy Violation: ENV_INDEX.md contains sensitive information.\n\n' +
+                    'Found pattern: ' + pattern + '\n' +
+                    'Please remove sensitive information.');
                 }
               }
             }
@@ -367,15 +355,12 @@ Please remove sensitive information.`);
             }
 
             if (errors.length > 0) {
-              core.setFailed(`❌ Policy Violation: High risk files changed but PR does not meet requirements.
-
-Changed high risk files:
-${highRiskFilesChanged.map(f => `  - ${f}`).join('\n')}
-
-Required actions:
-${errors.map(e => `  - ${e}`).join('\n')}
-
-Please update the PR description with the required markers and rollback plan.`);
+              core.setFailed('❌ Policy Violation: High risk files changed but PR does not meet requirements.\n\n' +
+                'Changed high risk files:\n' +
+                highRiskFilesChanged.map(f => '  - ' + f).join('\n') + '\n\n' +
+                'Required actions:\n' +
+                errors.map(e => '  - ' + e).join('\n') + '\n\n' +
+                'Please update the PR description with the required markers and rollback plan.');
             } else {
               console.log('✅ HIGH RISK validation passed');
             }
@@ -419,19 +404,15 @@ Please update the PR description with the required markers and rollback plan.`);
             );
 
             if (failedChecks.length > 0) {
-              core.setFailed(`❌ Policy Violation: PR is ready for review but has failed checks.
-
-Failed checks:
-${failedChecks.map(c => `  - ${c.name}: ${c.conclusion}`).join('\n')}
-
-Please fix the failing checks before marking PR as ready for review.`);
+              core.setFailed('❌ Policy Violation: PR is ready for review but has failed checks.\n\n' +
+                'Failed checks:\n' +
+                failedChecks.map(c => '  - ' + c.name + ': ' + c.conclusion).join('\n') + '\n\n' +
+                'Please fix the failing checks before marking PR as ready for review.');
             } else if (pendingChecks.length > 0) {
-              core.warning(`⚠️ Warning: PR is ready for review but has pending checks.
-
-Pending checks:
-${pendingChecks.map(c => `  - ${c.name}: ${c.status}`).join('\n')}
-
-Waiting for checks to complete...`);
+              core.warning('⚠️ Warning: PR is ready for review but has pending checks.\n\n' +
+                'Pending checks:\n' +
+                pendingChecks.map(c => '  - ' + c.name + ': ' + c.status).join('\n') + '\n\n' +
+                'Waiting for checks to complete...');
             } else {
               console.log('✅ PR ready status check passed');
             }
