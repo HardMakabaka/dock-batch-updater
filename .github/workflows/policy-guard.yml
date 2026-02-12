@@ -153,7 +153,7 @@ jobs:
 
             // Check forbidden absolute paths
             if (config.project_index_forbidden?.absolute_paths) {
-              const absolutePathPattern = /^[A-Za-z]:\\/|^(\/)/;
+              const absolutePathPattern = /^[A-Za-z]:\\\\|^\//;
               const lines = content.split('\n');
               lines.forEach((line, idx) => {
                 if (absolutePathPattern.test(line) && line.trim().length > 0) {
