@@ -97,15 +97,14 @@ jobs:
             console.log('Checking PROJECT_INDEX.md update requirement...');
 
             // Robust glob pattern matching functions
-            // Escape regex special characters (except * and ? which are glob wildcards)
+            // NOTE: protect globstar (**) so later single-* replacement doesn't corrupt it.
             const globToRegExp = (pattern) => {
-              // Escape all regex special characters first
               let regex = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-              // Replace glob wildcards with regex equivalents
-              regex = regex.replace(/\*\*/g, '.*');      // ** matches any path segments
-              regex = regex.replace(/\*/g, '[^/]*');     // * matches any characters except /
-              regex = regex.replace(/\?/g, '.');         // ? matches any single character
-              return new RegExp(`^${regex}$`);           // Anchor to full string match
+              regex = regex.replace(/\*\*/g, '__GLOBSTAR__'); // **
+              regex = regex.replace(/\*/g, '[^/]*');          // *
+              regex = regex.replace(/\?/g, '.');              // ?
+              regex = regex.replace(/__GLOBSTAR__/g, '.*');    // restore **
+              return new RegExp(`^${regex}$`);
             };
 
             // Check if a file matches any of the provided glob patterns
@@ -341,9 +340,10 @@ jobs:
             // Robust glob pattern matching functions (same as project-index-check)
             const globToRegExp = (pattern) => {
               let regex = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-              regex = regex.replace(/\*\*/g, '.*');
+              regex = regex.replace(/\*\*/g, '__GLOBSTAR__');
               regex = regex.replace(/\*/g, '[^/]*');
               regex = regex.replace(/\?/g, '.');
+              regex = regex.replace(/__GLOBSTAR__/g, '.*');
               return new RegExp(`^${regex}$`);
             };
 
