@@ -96,17 +96,30 @@ jobs:
 
             console.log('Checking PROJECT_INDEX.md update requirement...');
 
-            // Check if any project trigger pattern is changed
+            // Robust glob pattern matching functions
+            // NOTE: protect globstar (**) so later single-* replacement doesn't corrupt it.
+            const globToRegExp = (pattern) => {
+              let regex = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+              regex = regex.replace(/\*\*/g, '__GLOBSTAR__'); // **
+              regex = regex.replace(/\*/g, '[^/]*');          // *
+              regex = regex.replace(/\?/g, '.');              // ?
+              regex = regex.replace(/__GLOBSTAR__/g, '.*');    // restore **
+              return new RegExp(`^${regex}$`);
+            };
+
+            // Check if a file matches any of the provided glob patterns
+            const matchesAny = (file, patterns) => {
+              return patterns.some(pattern => globToRegExp(pattern).test(file));
+            };
+
+            // Filter out excluded files before processing
+            const excludePatterns = config.exclude_patterns || [];
+            const filteredChangedFiles = changedFiles.filter(file => !matchesAny(file, excludePatterns));
+
+            // Check if any project trigger pattern is changed (using filtered files)
             const projectTriggerPatterns = config.project_trigger_patterns || [];
-            const relevantChanges = changedFiles.filter(file => {
-              return projectTriggerPatterns.some(pattern => {
-                // Convert glob pattern to regex (simple implementation)
-                const regexPattern = pattern
-                  .replace(/\*\*/g, '.*')
-                  .replace(/\*/g, '[^/]*')
-                  .replace(/\?/g, '.');
-                return new RegExp(regexPattern).test(file);
-              });
+            const relevantChanges = filteredChangedFiles.filter(file => {
+              return matchesAny(file, projectTriggerPatterns);
             });
 
             console.log('Relevant changes:', relevantChanges);
@@ -324,15 +337,28 @@ jobs:
 
             console.log('Checking HIGH RISK markers...');
 
-            // Check if any high risk pattern files are changed
+            // Robust glob pattern matching functions (same as project-index-check)
+            const globToRegExp = (pattern) => {
+              let regex = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+              regex = regex.replace(/\*\*/g, '__GLOBSTAR__');
+              regex = regex.replace(/\*/g, '[^/]*');
+              regex = regex.replace(/\?/g, '.');
+              regex = regex.replace(/__GLOBSTAR__/g, '.*');
+              return new RegExp(`^${regex}$`);
+            };
+
+            const matchesAny = (file, patterns) => {
+              return patterns.some(pattern => globToRegExp(pattern).test(file));
+            };
+
+            // Filter out excluded files before processing
+            const excludePatterns = config.exclude_patterns || [];
+            const filteredChangedFiles = changedFiles.filter(file => !matchesAny(file, excludePatterns));
+
+            // Check if any high risk pattern files are changed (using filtered files)
             const highRiskPatterns = config.high_risk_patterns || [];
-            const highRiskFilesChanged = changedFiles.filter(file => {
-              return highRiskPatterns.some(pattern => {
-                const regexPattern = pattern
-                  .replace(/\*\*/g, '.*')
-                  .replace(/\*/g, '[^/]*');
-                return new RegExp(regexPattern).test(file);
-              });
+            const highRiskFilesChanged = filteredChangedFiles.filter(file => {
+              return matchesAny(file, highRiskPatterns);
             });
 
             if (highRiskFilesChanged.length === 0) {
