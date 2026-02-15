@@ -21,7 +21,7 @@ try:
 
     from core.docx_processor import DocxProcessor
     from core.batch_processor import BatchProcessor, ProcessingResult
-    from utils.format_preserver import FormatPreserver
+    from src.utils.format_preserver import FormatPreserver
 except ImportError as e:
     print(f"Import error: {e}")
     print("Please install dependencies: pip install -r requirements.txt")
@@ -149,7 +149,9 @@ class TestDocxProcessor(unittest.TestCase):
         backup_path = processor.create_backup()
 
         self.assertTrue(os.path.exists(backup_path))
-        self.assertTrue(backup_path.endswith("_backup.docx") or "_backup_" in backup_path)
+        # New naming: {stem}_backup_{relhint}_{hash6}_{uuid8}.docx
+        self.assertIn("_backup_", backup_path)
+        self.assertTrue(backup_path.endswith(".docx"))
 
     def test_is_docx_file(self):
         """Test DOCX file validation."""

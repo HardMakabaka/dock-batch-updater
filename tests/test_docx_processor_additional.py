@@ -158,7 +158,7 @@ class TestDocxProcessorAdditional(unittest.TestCase):
         self.assertFalse(processor.restore_backup())
 
     def test_create_backup_duplicate(self):
-        """重复备份应生成带序号的文件名。"""
+        """重复备份应生成不同文件名的备份。"""
         processor = DocxProcessor(self.test_file)
         processor.load()
         first_backup = processor.create_backup()

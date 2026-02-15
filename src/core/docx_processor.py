@@ -7,6 +7,9 @@ preservation.
 
 import os
 import shutil
+import uuid
+import hashlib
+import re
 from typing import List, Dict, Any, Optional, Tuple, Callable
 from pathlib import Path
 from docx import Document
@@ -14,7 +17,7 @@ from docx.text.paragraph import Paragraph
 from docx.table import Table, _Cell
 from docx.oxml.text.paragraph import CT_P
 
-from utils.format_preserver import FormatPreserver
+from src.utils.format_preserver import FormatPreserver
 
 
 class DocxProcessor:
@@ -53,6 +56,11 @@ class DocxProcessor:
     def create_backup(self, backup_dir: Optional[str] = None) -> str:
         """Create a backup of the original document.
 
+        Naming goals:
+        - Uniqueness under concurrency (global backup_dir mode)
+        - Human traceability (include parent dir hint + short hash)
+        - Keep names short to avoid Windows path length issues
+
         Args:
             backup_dir: Optional directory for backups. Defaults to same directory.
 
@@ -62,21 +70,60 @@ class DocxProcessor:
         if backup_dir is None:
             backup_dir = os.path.dirname(self.doc_path)
 
+        os.makedirs(backup_dir, exist_ok=True)
+
         original_name = os.path.basename(self.doc_path)
         name, ext = os.path.splitext(original_name)
-        backup_name = f"{name}_backup{ext}"
-        backup_path = os.path.join(backup_dir, backup_name)
 
-        # Handle duplicate backup names
-        counter = 1
-        while os.path.exists(backup_path):
-            backup_name = f"{name}_backup_{counter}{ext}"
+        parent_dir = os.path.basename(os.path.dirname(self.doc_path)) or "_root_"
+        parent_dir = re.sub(r"[^0-9A-Za-z_\u4e00-\u9fff]+", "_", parent_dir).strip("_")
+        if not parent_dir:
+            parent_dir = "_root_"
+        parent_dir = parent_dir[:20]
+
+        path_hash6 = hashlib.sha256(os.path.abspath(self.doc_path).encode("utf-8")).hexdigest()[:6]
+
+        # Two-tier uniqueness: short uuid in final name + atomic finalization via rename.
+        for _ in range(50):
+            uid8 = uuid.uuid4().hex[:8]
+            backup_name = f"{name}_backup_{parent_dir}_{path_hash6}_{uid8}{ext}"
             backup_path = os.path.join(backup_dir, backup_name)
-            counter += 1
 
-        shutil.copy2(self.doc_path, backup_path)
-        self.backup_path = backup_path
-        return backup_path
+            # Write to a temp file in the same directory, then move into place.
+            tmp_name = f".{backup_name}.tmp"
+            tmp_path = os.path.join(backup_dir, tmp_name)
+
+            try:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+
+                shutil.copy2(self.doc_path, tmp_path)
+
+                # Prefer atomic replacement when available; on Windows this is also atomic.
+                try:
+                    os.replace(tmp_path, backup_path)
+                except FileExistsError:
+                    # Extremely unlikely due to uuid, but treat as collision and retry.
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+                    continue
+
+                self.backup_path = backup_path
+                return backup_path
+            finally:
+                # Best-effort cleanup if anything failed after creating tmp
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+
+        raise RuntimeError(f"Failed to create unique backup in {backup_dir}")
 
     def replace_text(
         self,
